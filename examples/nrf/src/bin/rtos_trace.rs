@@ -3,9 +3,10 @@
 #![feature(type_alias_impl_trait)]
 
 use core::task::Poll;
+use futures::StreamExt;
 
 use embassy_executor::executor::Spawner;
-use embassy_executor::time::{Duration, Instant, Timer};
+use embassy_executor::time::{Duration, Instant, Timer, Ticker};
 use embassy_nrf::Peripherals;
 #[cfg(feature = "log")]
 use log::*;
@@ -54,6 +55,11 @@ async fn run3() {
     .await;
 }
 
+#[embassy_executor::task]
+async fn respawned() {
+    Timer::after(Duration::from_millis(100)).await;
+}
+
 #[embassy_executor::main]
 async fn main(spawner: Spawner, _p: Peripherals) {
     LOGGER.init();
@@ -66,4 +72,9 @@ async fn main(spawner: Spawner, _p: Peripherals) {
     spawner.spawn(run1()).unwrap();
     spawner.spawn(run2()).unwrap();
     spawner.spawn(run3()).unwrap();
+    let mut ticker = Ticker::every(Duration::from_millis(1000));
+    loop {
+        spawner.spawn(respawned()).unwrap();
+        ticker.next().await;
+    }
 }
